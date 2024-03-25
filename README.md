@@ -2,6 +2,10 @@
 
 An alternative ordered map in Go with de/serializing from/to JSON.
 
+## How to use
+
+See the [example code](./example_test.go).
+
 ## CLI for testing to deserialize JSON, then serialize with preserving the order
 
 ```
