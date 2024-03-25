@@ -3,17 +3,26 @@ package orderedmap
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
 var (
-	leftCurlyBrace  = []byte{'{'} //lint:ignore U1000 May use in the future
-	rightCurlyBrace = []byte{'}'} //lint:ignore U1000 May use in the future
-	leftBracket     = []byte{'['} //lint:ignore U1000 May use in the future
-	rightBracket    = []byte{']'} //lint:ignore U1000 May use in the future
-	colon           = []byte{':'} //lint:ignore U1000 May use in the future
-	comma           = []byte{','} //lint:ignore U1000 May use in the future
-	dot             = []byte{'.'} //lint:ignore U1000 May use in the future
+	colon = []byte{':'}
+	comma = []byte{','}
+)
+
+var (
+	leftCurlyBrace  = json.Delim('{')
+	rightCurlyBrace = json.Delim('}')
+	leftBracket     = json.Delim('[')
+	rightBracket    = json.Delim(']')
+)
+
+var (
+	ErrEndOfJSON    = errors.New("end of JSON")
+	ErrNestedObject = errors.New("detect nested object")
+	ErrNestedArray  = errors.New("detect nested array")
 )
 
 type Pair[K comparable, V any] struct {
@@ -96,7 +105,7 @@ func NewFromMap[M ~map[K]V, K comparable, V any](m M) *OrderedMap[K, V] {
 
 func (m OrderedMap[K, V]) MarshalJSON() ([]byte, error) {
 	buf := &bytes.Buffer{}
-	buf.Write(leftCurlyBrace)
+	buf.Write([]byte(leftCurlyBrace.String()))
 	pairs := m.Pairs()
 	length := len(pairs) - 1
 	for i, pair := range pairs {
@@ -111,8 +120,47 @@ func (m OrderedMap[K, V]) MarshalJSON() ([]byte, error) {
 			buf.Write(comma)
 		}
 	}
-	buf.Write(rightCurlyBrace)
+	buf.Write([]byte(rightCurlyBrace.String()))
 	return buf.Bytes(), nil
+}
+
+func (m *OrderedMap[K, V]) initialize() {
+	m.pairs = make([]Pair[K, V], 0)
+	m.index = make(map[K]int)
+	m.pos = 0
+}
+
+func (m *OrderedMap[K, V]) decodeKeyAndValue(decoder *json.Decoder) error {
+	key, err := decodeKey(decoder)
+	if err != nil {
+		return fmt.Errorf("failed to get key: %w", err)
+	}
+	value, err := decodeValue(decoder)
+	if err != nil {
+		return fmt.Errorf("failed to get value: %w", err)
+	}
+	m.Set(any(key).(K), value.(V))
+	return nil
+}
+
+func (m *OrderedMap[K, V]) UnmarshalJSON(b []byte) error {
+	m.initialize()
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	token, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	if delim, ok := token.(json.Delim); !(ok && isObject(delim)) {
+		return fmt.Errorf("expects JSON object, but not: %s", delim)
+	}
+	for {
+		if err := m.decodeKeyAndValue(decoder); err != nil {
+			if errors.Is(err, ErrEndOfJSON) {
+				return nil
+			}
+			return fmt.Errorf("failed to decode key/value: %w", err)
+		}
+	}
 }
 
 func ToMap[M ~map[K]V, K comparable, V any](om *OrderedMap[K, V]) M {

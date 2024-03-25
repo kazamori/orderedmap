@@ -1,6 +1,8 @@
 package orderedmap_test
 
 import (
+	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -148,6 +150,87 @@ func TestToMap(t *testing.T) {
 				cmp.AllowUnexported(orderedmap.OrderedMap[string, any]{}),
 			}
 			if diff := cmp.Diff(tt.expected, actual, opts...); diff != "" {
+				t.Error(diff)
+				return
+			}
+		})
+	}
+}
+
+func TestUnmarhalAndMarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		json string
+	}{
+		{
+			name: "primitive only",
+			json: `{"s":"test","i":3,"n":9007199254740992,"f":3.14,"b":true}`,
+		},
+		{
+			name: "simple array",
+			json: `{"a":["test",3,9007199254740992,3.14,true]}`,
+		},
+		{
+			name: "multiple nested array",
+			json: `{"a":[["test",3],[9007199254740992,3.14,true,["nested",5]]]}`,
+		},
+		{
+			name: "simple object",
+			json: `{"m":{"s":"test","i":7}}`,
+		},
+		{
+			name: "nested object",
+			json: `{"m":{"s":"test","i":7,"m2":{"f":3.14,"b":true,"m":{"i":19}}}}`,
+		},
+		{
+			name: "maps in array",
+			json: `{"a":[{"s":"test","i":7},{"s2":"test2","f":3.14},{"b":true}]}`,
+		},
+		{
+			name: "complex json data including arrays and objects",
+			json: `{"m":{"s":"test","a":[["test",3],[9007199254740992,3.14,true,["nested",5]]],"i":7,"m2":{"f":3.14,"a":[{"s":"test","i":7},{"s2":"test2","f":3.14},{"b":true}],"b":true,"m":{"a":["test",3,9007199254740992,3.14,true],"i":19}}}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var m orderedmap.OrderedMap[string, any]
+			if err := json.Unmarshal(json.RawMessage(tt.json), &m); err != nil {
+				t.Error(err)
+				return
+			}
+			actual := m.String()
+			if diff := cmp.Diff(tt.json, actual); diff != "" {
+				t.Error(diff)
+				return
+			}
+		})
+	}
+}
+
+func TestErrorUnmarhalAndMarshalJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		json     string
+		expected error
+	}{
+		{
+			name:     "simple array",
+			json:     `["test",3,9007199254740992,3.14,true]`,
+			expected: errors.New("expects JSON object, but not: ["),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var m orderedmap.OrderedMap[string, any]
+			err := json.Unmarshal(json.RawMessage(tt.json), &m)
+			if err == nil {
+				t.Error("expects an error occurred, but no error")
+			}
+			if diff := cmp.Diff(tt.expected.Error(), err.Error()); diff != "" {
 				t.Error(diff)
 				return
 			}
