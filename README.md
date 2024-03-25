@@ -1,6 +1,6 @@
 # orderedmap
 
-An alternative ordered map in Go with de/serializing from/to JSON.
+An alternative generic ordered map in Go with de/serializing from/to JSON.
 
 ## How to use
 
