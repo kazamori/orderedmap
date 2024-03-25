@@ -5,7 +5,58 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 )
+
+func isSlice(v any) bool {
+	if !reflect.ValueOf(v).IsValid() {
+		return false
+	}
+	return reflect.TypeOf(v).Kind() == reflect.Slice
+}
+
+func isValueAndTypeAreSlice(typ any, value any) bool {
+	return isSlice(typ) && isSlice(value)
+}
+
+func convertValuesForSlice(typ any, anyValues []any) any {
+	elem := reflect.TypeOf(typ).Elem().Elem()
+	switch kind := elem.Kind(); kind {
+	case reflect.Bool:
+		values := make([]bool, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(bool))
+		}
+		return values
+	case reflect.Int:
+		values := make([]int, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(int))
+		}
+		return values
+	case reflect.Int64:
+		values := make([]int64, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(int64))
+		}
+		return values
+	case reflect.Float64:
+		values := make([]float64, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(float64))
+		}
+		return values
+	case reflect.String:
+		values := make([]string, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(string))
+		}
+		return values
+
+	default:
+		panic(fmt.Errorf("unsupported type to convert: %s", kind))
+	}
+}
 
 func isObject(delim json.Delim) bool {
 	return delim == leftCurlyBrace
@@ -54,7 +105,7 @@ func decodeObject(decoder *json.Decoder) (any, error) {
 	}
 }
 
-func decodeArray(decoder *json.Decoder) (any, error) {
+func decodeArray(decoder *json.Decoder) ([]any, error) {
 	values := make([]any, 0)
 	for {
 		token, err := decoder.Token()

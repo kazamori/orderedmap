@@ -139,7 +139,13 @@ func (m *OrderedMap[K, V]) decodeKeyAndValue(decoder *json.Decoder) error {
 	if err != nil {
 		return fmt.Errorf("failed to get value: %w", err)
 	}
-	m.Set(any(key).(K), value.(V))
+	var v V
+	if isValueAndTypeAreSlice(v, value) {
+		v = any(convertValuesForSlice(new(V), value.([]any))).(V)
+	} else {
+		v = value.(V)
+	}
+	m.Set(any(key).(K), v)
 	return nil
 }
 

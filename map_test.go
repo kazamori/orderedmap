@@ -209,6 +209,38 @@ func TestUnmarhalAndMarshalJSON(t *testing.T) {
 	}
 }
 
+func TestUnmarhalAndMarshalJSONForSlice(t *testing.T) {
+	tests := []struct {
+		name string
+		json string
+	}{
+		{
+			name: "empty array",
+			json: `{"a1":[]}`,
+		},
+		{
+			name: "strings array",
+			json: `{"a1":["t1","t3","t2"]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var m orderedmap.OrderedMap[string, []string]
+			if err := json.Unmarshal(json.RawMessage(tt.json), &m); err != nil {
+				t.Error(err)
+				return
+			}
+			actual := m.String()
+			if diff := cmp.Diff(tt.json, actual); diff != "" {
+				t.Error(diff)
+				return
+			}
+		})
+	}
+}
+
 func TestErrorUnmarhalAndMarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
