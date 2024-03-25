@@ -40,6 +40,18 @@ func convertValuesForSlice(typ any, anyValues []any) any {
 			values = append(values, v.(int64))
 		}
 		return values
+	case reflect.Uint:
+		values := make([]uint, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(uint))
+		}
+		return values
+	case reflect.Uint64:
+		values := make([]uint64, 0, len(anyValues))
+		for _, v := range anyValues {
+			values = append(values, v.(uint64))
+		}
+		return values
 	case reflect.Float64:
 		values := make([]float64, 0, len(anyValues))
 		for _, v := range anyValues {
@@ -52,7 +64,6 @@ func convertValuesForSlice(typ any, anyValues []any) any {
 			values = append(values, v.(string))
 		}
 		return values
-
 	default:
 		panic(fmt.Errorf("unsupported type to convert: %s", kind))
 	}
@@ -142,8 +153,9 @@ func decodeArray(decoder *json.Decoder) ([]any, error) {
 }
 
 func handleToken(token json.Token) (any, error) {
+	// TODO: An abstraction layer for handling a token if it needed
 	switch t := token.(type) {
-	case string, float64, int64, bool:
+	case string, float64, int, int64, uint, uint64, bool:
 		return token, nil
 	default:
 		slog.Debug("unexpected token type", "token", t)
