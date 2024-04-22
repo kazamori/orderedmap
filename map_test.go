@@ -67,13 +67,13 @@ func TestFromMap(t *testing.T) {
 			name: "complex data in an array in a map",
 			m: map[string]any{
 				"a": []map[string]any{
-					map[string]any{
+					{
 						"k1": "test",
 					},
-					map[string]any{
+					{
 						"k2": 3.14,
 					},
-					map[string]any{
+					{
 						"k3": map[string]any{
 							"k3-1": 33,
 						},
