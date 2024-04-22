@@ -9,7 +9,6 @@ jobs:
       matrix:
         go: [
           '1.22',
-          '1.21',
         ]
 
     steps:
