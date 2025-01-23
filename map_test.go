@@ -167,6 +167,14 @@ func TestUnmarhalAndMarshalJSON(t *testing.T) {
 			json: `{"s":"test","i":3,"n":9007199254740992,"f":3.14,"b":true}`,
 		},
 		{
+			name: "value is null",
+			json: `{"value":null,"data":[null]}`,
+		},
+		{
+			name: "empty array",
+			json: `{"a":[]}`,
+		},
+		{
 			name: "simple array",
 			json: `{"a":["test",3,9007199254740992,3.14,true]}`,
 		},
