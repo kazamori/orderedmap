@@ -1,5 +1,5 @@
 # orderedmap
-![Coverage](https://img.shields.io/badge/Coverage-63.9%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-65.2%25-yellow)
 
 An alternative generic ordered map in Go with de/serializing from/to JSON.
 
