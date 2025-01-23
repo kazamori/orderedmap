@@ -36,7 +36,7 @@ jobs:
 
       # coverage
       - name: Go Coverage Badge
-        uses: tj-actions/coverage-badge-go@v1
+        uses: tj-actions/coverage-badge-go@v2
         with:
           green: 80
           filename: coverage.out
