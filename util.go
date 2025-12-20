@@ -15,57 +15,85 @@ func isSlice(v any) bool {
 	return reflect.TypeOf(v).Kind() == reflect.Slice
 }
 
-func isValueAndTypeAreSlice(typ any, value any) bool {
-	return isSlice(typ) && isSlice(value)
-}
+func convertValuesForSlice(zero any, anyValues []any) (any, error) {
+	if zero == nil {
+		return nil, errors.New("zero cannot be nil")
+	}
 
-func convertValuesForSlice(typ any, anyValues []any) any {
-	elem := reflect.TypeOf(typ).Elem().Elem()
+	elem := reflect.TypeOf(zero).Elem()
 	switch kind := elem.Kind(); kind {
 	case reflect.Bool:
 		values := make([]bool, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(bool))
+			vv, ok := v.(bool)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as bool", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.Int:
 		values := make([]int, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(int))
+			vv, ok := v.(int)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as int", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.Int64:
 		values := make([]int64, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(int64))
+			vv, ok := v.(int64)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as int64", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.Uint:
 		values := make([]uint, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(uint))
+			vv, ok := v.(uint)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as uint", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.Uint64:
 		values := make([]uint64, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(uint64))
+			vv, ok := v.(uint64)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as uint64", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.Float64:
 		values := make([]float64, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(float64))
+			vv, ok := v.(float64)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as float64", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	case reflect.String:
 		values := make([]string, 0, len(anyValues))
 		for _, v := range anyValues {
-			values = append(values, v.(string))
+			vv, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("failed to assert %v (%T) as string", v, v)
+			}
+			values = append(values, vv)
 		}
-		return values
+		return values, nil
 	default:
-		panic(fmt.Errorf("unsupported type to convert: %s", kind))
+		return nil, fmt.Errorf("unsupported type to convert: %s", kind)
 	}
 }
 
@@ -179,4 +207,28 @@ func decodeValue(decoder *json.Decoder) (any, error) {
 		}
 	}
 	return handleToken(token)
+}
+
+func assertType[T any](value any) (T, error) {
+	var zero T
+	if isSlice(zero) {
+		v, ok := value.([]any)
+		if !ok {
+			return zero, fmt.Errorf("failed to assert %v (%T) as slice", value, value)
+		}
+		values, err := convertValuesForSlice(zero, v)
+		if err != nil {
+			return zero, fmt.Errorf("failed to convert slice: %w", err)
+		}
+		typedValues, ok := any(values).(T)
+		if !ok {
+			return zero, fmt.Errorf("failed to convert typed slice (%T)", values)
+		}
+		return typedValues, nil
+	}
+	v, ok := value.(T)
+	if !ok {
+		return zero, fmt.Errorf("failed to assert %v (%T) as %T", value, value, zero)
+	}
+	return v, nil
 }

@@ -133,21 +133,27 @@ func (m *OrderedMap[K, V]) initialize() {
 func (m *OrderedMap[K, V]) decodeKeyAndValue(decoder *json.Decoder) error {
 	key, err := decodeKey(decoder)
 	if err != nil {
-		return fmt.Errorf("failed to get key: %w", err)
+		return fmt.Errorf("failed to decode key: %w", err)
 	}
+	k, err := assertType[K](any(key))
+	if err != nil {
+		return fmt.Errorf("invalid key type: %w", err)
+	}
+
 	value, err := decodeValue(decoder)
 	if err != nil {
-		return fmt.Errorf("failed to get value: %w", err)
+		return fmt.Errorf("failed to decode value: %w", err)
 	}
-	var v V
+	var zero V
 	if value == nil {
-		// nothing to do
-	} else if isValueAndTypeAreSlice(v, value) {
-		v = any(convertValuesForSlice(new(V), value.([]any))).(V)
-	} else {
-		v = value.(V)
+		m.Set(k, zero)
+		return nil
 	}
-	m.Set(any(key).(K), v)
+	v, err := assertType[V](value)
+	if err != nil {
+		return fmt.Errorf("invalid value type: %w", err)
+	}
+	m.Set(k, v)
 	return nil
 }
 

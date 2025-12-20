@@ -263,24 +263,83 @@ func TestErrorUnmarhalAndMarshalJSON(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		json     string
-		expected error
+		name      string
+		json      string
+		unmarshal func(string) error
+		expected  error
 	}{
 		{
-			name:     "simple array",
-			json:     `["test",3,9007199254740992,3.14,true]`,
+			name: "simple array",
+			json: `["test",3,9007199254740992,3.14,true]`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[string, any]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
 			expected: errors.New("expects JSON object, but not: ["),
+		},
+		{
+			name: "json number",
+			json: `{"value": 5}`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[string, int]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
+			expected: errors.New("failed to decode key/value: invalid value type: failed to assert 5 (float64) as int"),
+		},
+		{
+			name: "wrong key type",
+			json: `{"a":"test"}`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[int, string]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
+			expected: errors.New("failed to decode key/value: invalid key type: failed to assert a (string) as int"),
+		},
+		{
+			name: "wrong value type",
+			json: `{"a":"b"}`,
+			unmarshal: func(data string) error {
+				m := orderedmap.New[string, json.RawMessage]()
+				return json.Unmarshal([]byte(data), m)
+			},
+			expected: errors.New("failed to decode key/value: invalid value type: failed to assert b (string) as slice"),
+		},
+		{
+			name: "wrong the type of slice",
+			json: `{"values": [2,3,4]}`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[string, []int]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
+			expected: errors.New("failed to decode key/value: invalid value type: failed to convert slice: failed to assert 2 (float64) as int"),
+		},
+		{
+			name: "unsupported the pointer type",
+			json: `{"values": 5}`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[string, *int]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
+			expected: errors.New("failed to decode key/value: invalid value type: failed to assert 5 (float64) as *int"),
+		},
+		{
+			name: "unsupported the pointer slice type",
+			json: `{"values": 5}`,
+			unmarshal: func(data string) error {
+				var m orderedmap.OrderedMap[string, *[]int]
+				return json.Unmarshal(json.RawMessage(data), &m)
+			},
+			expected: errors.New("failed to decode key/value: invalid value type: failed to assert 5 (float64) as *[]int"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var m orderedmap.OrderedMap[string, any]
-			err := json.Unmarshal(json.RawMessage(tt.json), &m)
+			err := tt.unmarshal(tt.json)
 			if err == nil {
 				t.Error("expects an error occurred, but no error")
+				return
 			}
 			if diff := cmp.Diff(tt.expected.Error(), err.Error()); diff != "" {
 				t.Error(diff)
