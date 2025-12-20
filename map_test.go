@@ -11,6 +11,8 @@ import (
 )
 
 func TestOrderedMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		pairs    []orderedmap.Pair[string, any]
@@ -51,6 +53,8 @@ func TestOrderedMap(t *testing.T) {
 }
 
 func TestFromMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		m        map[string]any
@@ -98,6 +102,8 @@ func TestFromMap(t *testing.T) {
 }
 
 func TestToMap(t *testing.T) {
+	t.Parallel()
+
 	nested1 := orderedmap.New[string, any]()
 	nested1.Set("f", 3.14)
 	nested1.Set("s", "nested")
@@ -158,6 +164,8 @@ func TestToMap(t *testing.T) {
 }
 
 func TestUnmarhalAndMarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		json string
@@ -218,6 +226,8 @@ func TestUnmarhalAndMarshalJSON(t *testing.T) {
 }
 
 func TestUnmarhalAndMarshalJSONForSlice(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		json string
@@ -250,6 +260,8 @@ func TestUnmarhalAndMarshalJSONForSlice(t *testing.T) {
 }
 
 func TestErrorUnmarhalAndMarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		json     string
