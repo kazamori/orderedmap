@@ -9,8 +9,11 @@ This is a Go library (`github.com/kazamori/orderedmap`) that provides a generic 
 ## Common Commands
 
 ```bash
-# Run all tests with race detection and coverage
+# Run all tests (includes format check, linting, race detection, coverage)
 make test
+
+# Check code formatting
+make fmt
 
 # Run linting (go vet + staticcheck)
 make lint

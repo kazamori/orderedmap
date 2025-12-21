@@ -17,9 +17,19 @@ clean:
 	go clean -cache -testcache
 	rm -f $(BINDIR)/*
 
+fmt:
+	@ FORMATTED=$$(go fmt ./... 2>&1); \
+	if [ -n "$$FORMATTED" ]; then \
+		echo "error: go fmt made changes to the following files:"; \
+		echo "$$FORMATTED"; \
+		exit 1; \
+	else \
+		echo "all files are formatted."; \
+	fi
+
 lint:
 	go vet ./...
 	staticcheck ./...
 
-test: lint
+test: fmt lint
 	go test -race -cover ./...
