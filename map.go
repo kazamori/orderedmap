@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 var (
@@ -130,34 +131,74 @@ func (m *OrderedMap[K, V]) initialize() {
 	m.pos = 0
 }
 
+func (m *OrderedMap[K, V]) decodeKey(decoder *json.Decoder) (K, error) {
+	var zero K
+	token, err := decoder.Token()
+	if err != nil {
+		return zero, fmt.Errorf("failed to get token as key: %w", err)
+	}
+	if delim, ok := token.(json.Delim); ok {
+		switch delim {
+		case leftCurlyBrace:
+			return zero, ErrNestedObject
+		case leftBracket:
+			return zero, ErrNestedArray
+		case rightCurlyBrace, rightBracket:
+			return zero, ErrEndOfJSON
+		}
+	}
+	return assertType[K](token)
+}
+
+func (m *OrderedMap[K, V]) decodeValue(decoder *json.Decoder) (V, error) {
+	var zero V
+	v, err := decodeValueAsAny(decoder)
+	if err != nil {
+		return zero, err
+	}
+	if v == nil {
+		return zero, nil
+	}
+	return assertType[V](v)
+}
+
 func (m *OrderedMap[K, V]) decodeKeyAndValue(decoder *json.Decoder) error {
-	key, err := decodeKey(decoder)
+	key, err := m.decodeKey(decoder)
 	if err != nil {
 		return fmt.Errorf("failed to decode key: %w", err)
 	}
-	k, err := assertType[K](any(key))
-	if err != nil {
-		return fmt.Errorf("invalid key type: %w", err)
-	}
-
-	value, err := decodeValue(decoder)
+	value, err := m.decodeValue(decoder)
 	if err != nil {
 		return fmt.Errorf("failed to decode value: %w", err)
 	}
-	var zero V
-	if value == nil {
-		m.Set(k, zero)
-		return nil
+	m.Set(key, value)
+	return nil
+}
+
+func (m *OrderedMap[K, V]) validateKeyValueType() error {
+	var key K
+	if reflect.ValueOf(key).Kind() != reflect.String {
+		return fmt.Errorf("key type must be string")
 	}
-	v, err := assertType[V](value)
-	if err != nil {
-		return fmt.Errorf("invalid value type: %w", err)
+
+	var value V
+	switch reflect.ValueOf(value).Kind() {
+	case reflect.Pointer:
+		return fmt.Errorf("unsupported pointer, use any")
+	case reflect.Map:
+		return fmt.Errorf("unsupported map, use any")
+	case reflect.Struct:
+		return fmt.Errorf("unsupported struct, use any")
+	case reflect.Array:
+		return fmt.Errorf("unsupported array, use slice")
 	}
-	m.Set(k, v)
 	return nil
 }
 
 func (m *OrderedMap[K, V]) UnmarshalJSON(b []byte) error {
+	if err := m.validateKeyValueType(); err != nil {
+		return fmt.Errorf("failed to validate type: %w", err)
+	}
 	m.initialize()
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	token, err := decoder.Token()

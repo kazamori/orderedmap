@@ -4,15 +4,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"reflect"
 )
 
 func isSlice(v any) bool {
-	if !reflect.ValueOf(v).IsValid() {
-		return false
+	return reflect.ValueOf(v).Kind() == reflect.Slice
+}
+
+func assertType[T any](value any) (T, error) {
+	var zero T
+	if isSlice(zero) {
+		v, ok := value.([]any)
+		if !ok {
+			return zero, fmt.Errorf("failed to assert %v (%T) as slice", value, value)
+		}
+		values, err := convertValuesForSlice(zero, v)
+		if err != nil {
+			return zero, fmt.Errorf("failed to convert slice: %w", err)
+		}
+		typedValues, ok := any(values).(T)
+		if !ok {
+			return zero, fmt.Errorf("failed to convert typed slice (%T)", values)
+		}
+		return typedValues, nil
 	}
-	return reflect.TypeOf(v).Kind() == reflect.Slice
+	v, ok := value.(T)
+	if !ok {
+		return zero, fmt.Errorf("failed to assert %v (%T) as %T", value, value, zero)
+	}
+	return v, nil
 }
 
 func convertValuesForSlice(zero any, anyValues []any) (any, error) {
@@ -101,46 +121,15 @@ func isObject(delim json.Delim) bool {
 	return delim == leftCurlyBrace
 }
 
-func decodeKey(decoder *json.Decoder) (string, error) {
-	token, err := decoder.Token()
-	if err != nil {
-		return "", fmt.Errorf("failed to get token as key: %w", err)
-	}
-	if delim, ok := token.(json.Delim); ok {
-		switch delim {
-		case leftCurlyBrace:
-			return "", ErrNestedObject
-		case leftBracket:
-			return "", ErrNestedArray
-		case rightCurlyBrace, rightBracket:
-			return "", ErrEndOfJSON
-		}
-	}
-	if key, ok := token.(string); ok {
-		return key, nil
-	}
-	return "", fmt.Errorf("key should be string, but not %v", token)
-}
-
 func decodeObject(decoder *json.Decoder) (any, error) {
 	m := New[string, any]()
 	for {
-		key, err := decodeKey(decoder)
-		if err != nil {
+		if err := m.decodeKeyAndValue(decoder); err != nil {
 			if errors.Is(err, ErrEndOfJSON) {
 				return m, nil
-			} else if errors.Is(err, ErrNestedObject) {
-				return decodeObject(decoder)
-			} else if errors.Is(err, ErrNestedArray) {
-				return decodeArray(decoder)
 			}
-			return nil, fmt.Errorf("failed to get key: %w", err)
+			return nil, fmt.Errorf("failed to decode key/value: %w", err)
 		}
-		value, err := decodeValue(decoder)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get value: %w", err)
-		}
-		m.Set(key, value)
 	}
 }
 
@@ -182,16 +171,18 @@ func decodeArray(decoder *json.Decoder) ([]any, error) {
 
 func handleToken(token json.Token) (any, error) {
 	// TODO: An abstraction layer for handling a token if it needed
+	if token == nil {
+		return token, nil
+	}
 	switch t := token.(type) {
 	case string, float64, int, int64, uint, uint64, bool:
 		return token, nil
 	default:
-		slog.Debug("unexpected token type", "token", t)
+		return nil, fmt.Errorf("unexpected token type: %v", t)
 	}
-	return token, nil
 }
 
-func decodeValue(decoder *json.Decoder) (any, error) {
+func decodeValueAsAny(decoder *json.Decoder) (any, error) {
 	token, err := decoder.Token()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token as value: %w", err)
@@ -207,28 +198,4 @@ func decodeValue(decoder *json.Decoder) (any, error) {
 		}
 	}
 	return handleToken(token)
-}
-
-func assertType[T any](value any) (T, error) {
-	var zero T
-	if isSlice(zero) {
-		v, ok := value.([]any)
-		if !ok {
-			return zero, fmt.Errorf("failed to assert %v (%T) as slice", value, value)
-		}
-		values, err := convertValuesForSlice(zero, v)
-		if err != nil {
-			return zero, fmt.Errorf("failed to convert slice: %w", err)
-		}
-		typedValues, ok := any(values).(T)
-		if !ok {
-			return zero, fmt.Errorf("failed to convert typed slice (%T)", values)
-		}
-		return typedValues, nil
-	}
-	v, ok := value.(T)
-	if !ok {
-		return zero, fmt.Errorf("failed to assert %v (%T) as %T", value, value, zero)
-	}
-	return v, nil
 }
