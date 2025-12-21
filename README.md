@@ -1,5 +1,5 @@
 # orderedmap
-![Coverage](https://img.shields.io/badge/Coverage-67.4%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-69.4%25-yellow)
 
 A generic ordered map implementation in Go that preserves insertion order and supports JSON serialization/deserialization.
 
