@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(go test:*)"
+      "Bash(staticcheck:*)",
+      "Bash(go:*)",
+      "Bash(make:*)"
     ]
   }
 }
